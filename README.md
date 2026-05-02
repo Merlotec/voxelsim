@@ -1,6 +1,12 @@
 # VoxelSim
 
-VoxelSim is a drone simulation and perception stack built around a sparse voxel world. Agents navigate a 3D grid, build an internal map from their GPU-rendered camera feed, plan smooth trajectories through the voxels, and predict future occupancy from motion history. The stack exposes everything through Python bindings (PyO3) for scripting and experimentation.
+VoxelSim is an ultra high performance simulation and perception environment built around a sparse voxel world. It is designed to enable rapid training of physical intelligence models and drone autonomy. This is great for two things:
+- Training autonomous drone systems using reinforcement learning.
+- Benchmarking general (3D) physical intelligence models efficiently.
+
+VoxelSim uses a highly optimised *voxel based renderer* to dramatically improve rendering performance of the drone's internal representation of the world. Any reasoning/control logic built on this platform can easily be converted to run on a real drone, since VoxelSim uses the exact PID loops from PX4.
+
+<!-- Agents navigate a 3D grid, build an internal map from their GPU-rendered camera feed, plan smooth trajectories through the voxels, and predict future occupancy from motion history. The stack exposes everything through Python bindings (PyO3) for scripting and experimentation. -->
 
 ## Architecture
 
@@ -18,7 +24,7 @@ examples/            Python scripts demonstrating the full loop
 
 ### 1. GPU POV Rendering into FilterWorld
 
-`AgentVisionRenderer` uses a wgpu compute pipeline to rasterise the voxel world from the drone's exact camera pose at each frame. The output is written into a `FilterWorld` — the agent's internal representation of what it has mapped so far. Because the rasterisation runs on the GPU, a 100³-voxel scene renders in milliseconds, fast enough to keep up with the simulation loop. The `FilterWorld` accumulates evidence across frames so the agent progressively builds a complete internal map even as it moves.
+`AgentVisionRenderer` uses a wgpu compute pipeline to rasterise the voxel world from the drone's exact camera pose at each frame. The output is written into a `FilterWorld` — the agent's internal representation of what it has mapped so far. Because the rasterisation runs on the GPU, and renders actual voxel coordinates in the fragment shader,, a 100³-voxel scene renders in milliseconds, fast enough to keep up with the simulation loop. The `FilterWorld` accumulates evidence across frames so the agent progressively builds a complete internal map even as it moves. Artificial noise is then added as required, to mimic the uncertainty of the real mapping process.
 
 ### 2. Smooth Path Planning Through the Voxel Grid
 
