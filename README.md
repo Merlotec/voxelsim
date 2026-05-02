@@ -11,7 +11,7 @@ VoxelSim uses a highly optimised *voxel based renderer* to dramatically improve 
 ## Architecture
 
 ```
-voxelsim/            Core — VoxelGrid, agents, A* planner, path execution, PTG prediction
+voxelsim/            Core — VoxelGrid, agents, A* planner, path execution, future occupancy prediction
 voxelsim-compute/    GPU compute pipeline — rasterises the voxel world into the agent's FilterWorld
 voxelsim-simulator/  Quad dynamics, terrain generator, optional PX4 controller (default feature)
 voxelsim-renderer/   Bevy visualiser — world view + per-agent POV windows over TCP
@@ -30,7 +30,7 @@ examples/            Python scripts demonstrating the full loop
 
 `AStarActionPlanner` finds the shortest collision-free sequence of grid moves from origin to destination, padded by a configurable obstacle radius. Rather than executing this discrete path cell-by-cell, the path is lifted into a smooth trajectory: the centroid sequence is fit with a continuous spline so the drone follows a curved line through space. The drone is therefore not axis-locked — it can arc diagonally through open space while still respecting the topology of the grid search. The trajectory is stored per-agent and drawn live in the renderer as a blue spline.
 
-### 3. Phase Grid Occupancy Prediction (PTG)
+### 3. Phase Trajectory Graph (PTG) - Future Cell Occupancy Prediction
 
 `PtgSolver` maintains a rolling history of `PhaseGrid` snapshots — each recording observed occupancy across the agent's visible region at a point in time. Given a future time horizon, it projects those observations forward using a bounded-addition accumulator: cells that have been consistently occupied gain high phase values; cells that fluctuate are penalised. The resulting `PhaseGrid` is a probability field over future occupied voxels. This is sent alongside the standard POV data so the renderer can visualise predicted occupancy as a separate translucent layer.
 
@@ -181,7 +181,7 @@ fw.send_pov_async_py(client, stream_idx, agent_id, proj, orientation, phase_grid
 fw.is_updating_py(last_timestamp) -> bool
 ```
 
-### PTG occupancy prediction
+### Phase Trajectory Graph (PTG) occupancy prediction
 
 ```python
 solver = vxs.PtgSolver.default_py()
