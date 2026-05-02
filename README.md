@@ -6,7 +6,7 @@ VoxelSim is an ultra high performance simulation and perception environment buil
 
 Because VoxelSim can do updating of the drone's PoV so quickly, allows users to quickly train/test ML models for physical intelligence. 
 
-VoxelSim uses a highly optimised *voxel based renderer* to dramatically improve rendering performance of the drone's internal representation of the world. Any reasoning/control logic built on this platform can easily be converted to run on a real drone, since VoxelSim uses the exact PID loops from PX4.
+VoxelSim uses a highly optimised *voxel based renderer* to dramatically improve rendering performance of the drone's internal representation of the world. Any reasoning/control logic built on VoxelSim can easily be converted to run on a real drone, since VoxelSim uses the exact PID loops from PX4.
 
 <!-- Agents navigate a 3D grid, build an internal map from their GPU-rendered camera feed, plan smooth trajectories through the voxels, and predict future occupancy from motion history. The stack exposes everything through Python bindings (PyO3) for scripting and experimentation. -->
 
