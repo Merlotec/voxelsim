@@ -176,7 +176,7 @@ renderer.update_filter_world_py(camera_view, proj, fw, dyn_world, timestamp, cal
 renderer.render_changeset_py(camera_view, proj, fw, dyn_world, timestamp, callback)
 
 # Send POV to the renderer process
-fw.send_pov_py(client, stream_idx, agent_id, proj, orientation)
+fw.send_pov_py(client, stream_idx, agent_id, proj, orientation, phase_grid)
 fw.send_pov_async_py(client, stream_idx, agent_id, proj, orientation, phase_grid)
 fw.is_updating_py(last_timestamp) -> bool
 ```
