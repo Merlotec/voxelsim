@@ -10,6 +10,11 @@ VoxelSim uses a highly optimised *voxel based renderer* to dramatically improve 
 
 <!-- Agents navigate a 3D grid, build an internal map from their GPU-rendered camera feed, plan smooth trajectories through the voxels, and predict future occupancy from motion history. The stack exposes everything through Python bindings (PyO3) for scripting and experimentation. -->
 
+## Demo
+<video src="https://github.com/user-attachments/assets/49ecf9cd-9845-452b-a9c3-6290d0e1fdfe" controls="controls" style="max-width: 100%;">
+  Your browser does not support the video tag.
+</video>
+
 ## Architecture
 
 ```
