@@ -1,0 +1,17 @@
+[package]
+name = "px4-mc"
+version = "0.1.0"
+edition = "2021"
+description = "Thin Rust bindings to PX4 multicopter controllers (pos/att/rate) via a CMake-built static library."
+license = "UNLICENSED"
+
+[dependencies]
+nalgebra = { version = "0.33.2" }
+
+[build-dependencies]
+cmake = "0.1"
+
+[lib]
+name = "px4_mc"
+path = "src/lib.rs"
+

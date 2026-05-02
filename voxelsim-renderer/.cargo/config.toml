@@ -1,0 +1,16 @@
+# Configuration for building to WebAssembly
+#
+# This only affects builds when you explicitly specify: --target wasm32-unknown-unknown
+# Regular builds (cargo run, cargo build) use your native target and ignore this.
+#
+# To build for WASM:
+#   cargo build --release --target wasm32-unknown-unknown
+#   wasm-bindgen --out-dir wasm --target web target/wasm32-unknown-unknown/release/voxelsim-renderer.wasm
+#   python3 -m http.server 8000
+#
+# To build natively (no change needed):
+#   cargo run
+
+[target.wasm32-unknown-unknown]
+# runner removed - we use custom index.html + HTTP server instead
+rustflags = ["--cfg=web_sys_unstable_apis", "--cfg=getrandom_backend=\"wasm_js\""]

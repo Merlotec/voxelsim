@@ -1,0 +1,25 @@
+[package]
+name = "voxelsim-simulator"
+version = "0.1.0"
+edition = "2024"
+
+[features]
+default = ["px4"]
+python = ["pyo3", "voxelsim/python"]
+px4 = ["px4-mc"]
+
+[dependencies]
+voxelsim = {path = "../voxelsim"}
+bitflags = { version = "2.9.1", features = ["serde"] }
+nalgebra = { version = "0.33.2", features = ["serde-serialize", "serde"] }
+noise = "0.9.0"
+tinyvec = { version = "1.9.0", features = ["serde"] }
+rand = "0.9.1"
+serde = { version = "1.0", features = ["derive"] }
+bincode = {version = "2.0", features=["serde"]}
+rayon = "1.8"
+pyo3 = { version = "0.25.1", features = ["extension-module"], optional = true }
+bytemuck = "1.23.1"
+dashmap = { version = "6.1.0", features = ["serde", "rayon"] }
+peng_quad = "0.5.5"
+px4-mc = { path = "../px4-mc", optional = true }

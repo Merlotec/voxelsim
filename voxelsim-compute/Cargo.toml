@@ -1,0 +1,27 @@
+[package]
+name = "voxelsim-compute"
+version = "0.1.0"
+edition = "2024"
+
+[features]
+default = []
+clib = []
+python = ["pyo3", "voxelsim/python"]
+
+[dependencies]
+bytemuck = "1.23.1"
+dashmap = "6.1.0"
+env_logger = "0.11.8"
+futures = "0.3.31"
+futures-intrusive = "0.5.0"
+nalgebra = { version = "0.33.2", features = ["bytemuck", "convert-bytemuck"] }
+nalgebra-glm = "0.19.0"
+pollster = "0.4.0"
+rayon = "1.10.0"
+voxelsim = { path = "../voxelsim" }
+pyo3 = { version = "0.25.1", features = ["extension-module"], optional = true }
+crossbeam-channel = "0.5.15"
+wgpu = "26.0.1"
+glsl-layout = "0.5.0"
+tokio = { version = "1.0", features = ["full"] }
+numpy = "0.25.0"

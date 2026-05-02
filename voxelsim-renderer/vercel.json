@@ -1,0 +1,24 @@
+{
+  "version": 2,
+  "buildCommand": "echo 'No build needed - using pre-built WASM'",
+  "outputDirectory": ".",
+  "headers": [
+    {
+      "source": "/wasm/(.*)",
+      "headers": [
+        {
+          "key": "Cross-Origin-Embedder-Policy",
+          "value": "require-corp"
+        },
+        {
+          "key": "Cross-Origin-Opener-Policy",
+          "value": "same-origin"
+        },
+        {
+          "key": "Content-Type",
+          "value": "application/wasm"
+        }
+      ]
+    }
+  ]
+}

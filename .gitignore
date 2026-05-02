@@ -1,0 +1,14 @@
+.DS_Store
+target
+.venv
+.venv-py311
+.venv310
+.venv3102
+/python/Experiments/runs
+/runs
+logs
+test.sh
+/logs
+CLAUDE.md
+node_modules
+__pycache__

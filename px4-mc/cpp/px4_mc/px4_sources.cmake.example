@@ -1,0 +1,19 @@
+# Example list of PX4 source files to be compiled into the px4_mc static library.
+# Copy this file to px4_sources.cmake and adjust PX4_SRC_DIR (via CMake or env)
+# to point to your PX4-Autopilot checkout.
+
+set(PX4_MC_PX4_SOURCES
+    # Attitude control
+    ${PX4_SRC_DIR}/src/modules/mc_att_control/AttitudeControl/AttitudeControl.cpp
+
+    # Rate control
+    ${PX4_SRC_DIR}/src/modules/mc_rate_control/RateControl/RateControl.cpp
+
+    # Position control
+    ${PX4_SRC_DIR}/src/modules/mc_pos_control/PositionControl/PositionControl.cpp
+
+    # Matrix and math libraries (adjust as needed based on PX4 version)
+    ${PX4_SRC_DIR}/src/lib/matrix/matrix/math.cpp
+    ${PX4_SRC_DIR}/src/lib/mathlib/mathlib.cpp
+)
+

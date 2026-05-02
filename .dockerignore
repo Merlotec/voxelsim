@@ -1,0 +1,47 @@
+# Docker build artifacts
+target/
+**/target/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+*.whl
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Git
+.git/
+.gitignore
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Environment
+.env
+.venv
+venv/
+ENV/
+
+# Documentation
+*.md
+!CLAUDE.md
+
+# Assets (if large)
+# assets/

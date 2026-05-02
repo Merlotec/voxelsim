@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>VoxelSim Renderer (WASM)</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        width: 100vw;
+        height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        background: #1a1a1a;
+        font-family: monospace;
+        color: #fff;
+        overflow: hidden;
+      }
+
+      canvas {
+        width: 100% !important;
+        height: 100% !important;
+        min-width: none !important;
+        min-height: none !important;
+        display: block;
+      }
+
+      #loading {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        text-align: center;
+        z-index: 1000;
+      }
+
+      #status {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        background: rgba(0, 0, 0, 0.7);
+        padding: 10px;
+        border-radius: 5px;
+        font-size: 12px;
+        z-index: 999;
+      }
+
+      .status-item {
+        margin: 5px 0;
+      }
+
+      .connected {
+        color: #4caf50;
+      }
+
+      .disconnected {
+        color: #f44336;
+      }
+
+      .waiting {
+        color: #ff9800;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="loading">
+      <h1>Loading VoxelSim Renderer...</h1>
+      <p>Initializing WebAssembly and Bevy...</p>
+    </div>
+    <div id="status">
+      <div class="status-item">
+        Proxy Server: <span id="proxy-status" class="waiting">Checking...</span>
+      </div>
+      <div class="status-item">
+        WebSocket: <span id="ws-status" class="waiting">Waiting...</span>
+      </div>
+      <div class="status-item">
+        Simulation: <span id="sim-status" class="waiting">Waiting...</span>
+      </div>
+    </div>
+
+    <script type="module">
+      import init from "./wasm/voxelsim-renderer.js";
+
+      // Auto-detect WebSocket URL (localhost or production)
+      const WS_URL = window.location.hostname === 'localhost'
+        ? 'ws://localhost:9080'
+        : `wss://${window.location.hostname.replace('voxelsim', 'voxelsim-backend')}/ws`;
+
+      async function run() {
+        try {
+          // Check if proxy/backend is running
+          try {
+            const testWs = new WebSocket(WS_URL);
+            testWs.onopen = () => {
+              document.getElementById("proxy-status").textContent = "Running";
+              document.getElementById("proxy-status").className = "connected";
+              testWs.close();
+            };
+            testWs.onerror = () => {
+              document.getElementById("proxy-status").textContent =
+                "Not running";
+              document.getElementById("proxy-status").className =
+                "disconnected";
+              console.warn(
+                `Backend server not detected at ${WS_URL}. Make sure backend is running.`
+              );
+            };
+          } catch (e) {
+            document.getElementById("proxy-status").textContent = "Error";
+            document.getElementById("proxy-status").className = "disconnected";
+          }
+
+          // Initialize WASM
+          await init();
+
+          document.getElementById("loading").style.display = "none";
+          document.getElementById("ws-status").textContent = "Connected";
+          document.getElementById("ws-status").className = "connected";
+
+          console.log("VoxelSim Renderer initialized!");
+          console.log(`Waiting for simulation data on ${WS_URL}...`);
+        } catch (error) {
+          console.error("Failed to initialize:", error);
+          document.getElementById("loading").innerHTML =
+            "<h1>Error Loading Renderer</h1>" +
+            "<p>" +
+            error +
+            "</p>" +
+            "<p>Check console for details</p>";
+        }
+      }
+
+      run();
+    </script>
+  </body>
+</html>

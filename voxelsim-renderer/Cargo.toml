@@ -1,0 +1,54 @@
+[package]
+name = "voxelsim-renderer"
+version = "0.1.0"
+edition = "2024"
+
+[[bin]]
+name = "voxelsim-renderer"
+path = "src/main.rs"
+
+
+# Native-only dependencies (desktop builds)
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+tokio = { version = "1.0", features = ["full"] }
+# bevy = "0.16.1"
+
+# WASM-specific dependencies (web builds)
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+console_error_panic_hook = "0.1"
+getrandom = { version = "0.3", features = ["wasm_js"] }
+# bevy = { version = "0.16.1", features = ["webgpu"] }
+
+[dependencies]
+bevy = { version = "0.16.1"}
+voxelsim = { path = "../voxelsim" }
+bevy_panorbit_camera = "0.26.0"
+crossbeam-channel = "0.5.15"
+serde = { version = "1.0", features = ["derive"] }
+bincode = { version = "2.0", features = ["serde"] }
+nalgebra = { version = "0.33.2", features = ["serde-serialize", "serde"] }
+wasm-bindgen = "0.2.99"
+js-sys = "0.3.81"
+web-sys = { version = "0.3.81", features = [
+    "Window",
+    "Document",
+    "console",
+    "WebSocket",
+    "MessageEvent",
+    "ErrorEvent",
+    "BinaryType",
+    "Blob",
+    "CloseEvent",
+] }
+
+
+[profile.release]
+opt-level = 3      # Optimize for speed (not size)
+lto = "fat"         # Full link-time optimization
+codegen-units = 1   # Better optimization
+strip = true        # Strip symbols
+
+# Optimize dependencies even in dev mode for faster iteration
+[profile.dev.package."*"]
+opt-level = 3
+

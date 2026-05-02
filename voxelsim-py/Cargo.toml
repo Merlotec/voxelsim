@@ -1,0 +1,29 @@
+[package]
+name = "voxelsim-py"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+name = "voxelsim"
+crate-type=["cdylib"]
+
+[features]
+default = ["px4"]
+px4 = ["voxelsim-simulator/px4"]
+
+[dependencies]
+voxelsim = {path = "../voxelsim", features = ["python-ext"]}
+voxelsim-simulator = {path = "../voxelsim-simulator", features = ["python"]}
+voxelsim-compute = {path = "../voxelsim-compute", features = ["python"]}
+pyo3 = { version = "0.25.1", features = ["extension-module"] }
+
+
+[profile.release]
+opt-level = 3      # Optimize for speed (not size)
+lto = "thin"         # Full link-time optimization
+codegen-units = 1   # Better optimization
+
+# Optimize dependencies even in dev mode for faster iteration
+[profile.dev.package."*"]
+opt-level = 3
+
