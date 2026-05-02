@@ -1,1 +1,0 @@
-# Plan is to spawn in an agent, collect the scene, and have a seperate encoded scene view just like world_tester.py but with benchmark
