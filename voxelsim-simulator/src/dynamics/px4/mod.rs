@@ -106,11 +106,11 @@ impl AgentDynamics for Px4Dynamics {
         chaser: ChaseTarget,
         delta: f64,
     ) {
-        let (t_pos, t_vel, t_acc) = (chaser.pos, chaser.vel, chaser.acc);
+        let (t_pos, t_vel, _t_acc) = (chaser.pos, chaser.vel, chaser.acc);
         match chaser.progress {
             ActionProgress::ProgressTo(p, trim_tail) => {
                 if let AgentState::Action(action) = &mut agent.state {
-                    action.update_progress(p, trim_tail);
+                    let _ = action.update_progress(p, trim_tail);
                 }
             }
             ActionProgress::Complete(next_state) => {

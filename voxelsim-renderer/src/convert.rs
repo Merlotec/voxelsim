@@ -1,5 +1,3 @@
-use std::f64::consts::FRAC_PI_2;
-
 use bevy::math::{Mat3, Quat, Vec3};
 use nalgebra::{UnitQuaternion, Vector3};
 

@@ -180,9 +180,9 @@ impl PositionControl {
                 self.gain_vel_p.y * vel_err.y + self.gain_vel_d.y * pid.vel_dot.y + pid.thr_int.y;
 
             // Maximum allowed thrust.
-            let thrust_max_ne_tilt: f64 = pid.thr_sp.z * self.constraints.tilt.tan();
+            let _thrust_max_ne_tilt: f64 = pid.thr_sp.z * self.constraints.tilt.tan();
             let arg = (self.lim_thr_max * self.lim_thr_max) - (pid.thr_sp.z * pid.thr_sp.z);
-            let mut thrust_max_ne = arg.max(0.0).sqrt();
+            let thrust_max_ne = arg.max(0.0).sqrt();
 
             pid.thr_sp.x = thrust_desired_ne.x;
             pid.thr_sp.y = thrust_desired_ne.y;

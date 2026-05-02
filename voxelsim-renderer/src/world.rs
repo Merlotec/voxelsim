@@ -1,14 +1,11 @@
 // use std::ops::Deref;
 
-use std::f64::consts::FRAC_PI_2;
-
 use bevy::platform::collections::HashMap;
 use bevy::render::RenderPlugin;
 use bevy_panorbit_camera::{PanOrbitCamera, PanOrbitCameraPlugin};
 use crossbeam_channel::{Receiver, Sender};
-use nalgebra::{Normed, UnitQuaternion, Vector3};
+use nalgebra::Vector3;
 use voxelsim::trajectory::Trajectory;
-use voxelsim::viewport::CameraOrientation;
 
 #[cfg(not(target_arch = "wasm32"))]
 use crate::network::NetworkSubscriber;
@@ -19,7 +16,7 @@ use crate::render::{
     self, ActionCell, AgentComponent, AgentReceiver, CellAssets, CellComponent, FocusedAgent,
     OriginCell, QuitReceiver, WorldReceiver,
 };
-use voxelsim::{Action, Agent, Cell, MoveDir, VoxelGrid};
+use voxelsim::{Action, Agent, MoveDir, VoxelGrid};
 
 use crate::convert::*;
 
@@ -57,8 +54,8 @@ pub fn run_world_server() {
         });
     });
 
-    let (gui_sender, gui_receiver) = crossbeam_channel::unbounded::<GuiCommand>();
-    let (quit_sender, quit_receiver) = crossbeam_channel::unbounded::<()>();
+    let (gui_sender, _gui_receiver) = crossbeam_channel::unbounded::<GuiCommand>();
+    let (_quit_sender, quit_receiver) = crossbeam_channel::unbounded::<()>();
 
     begin_render(world_receiver, agent_receiver, gui_sender, quit_receiver);
 }

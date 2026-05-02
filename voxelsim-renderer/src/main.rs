@@ -1,17 +1,3 @@
-// Only import Tokio stuff for native builds
-#[cfg(not(target_arch = "wasm32"))]
-use {
-    crossbeam_channel::{Receiver, Sender},
-    serde::de::DeserializeOwned,
-    std::marker::PhantomData,
-    std::sync::Arc,
-    tokio::io::AsyncReadExt,
-    tokio::io::{AsyncBufReadExt, BufReader},
-    tokio::net::{TcpListener, TcpStream},
-    voxelsim::{Agent, VoxelGrid},
-    std::env,
-};
-
 pub mod convert;
 pub mod pov;
 pub mod render;

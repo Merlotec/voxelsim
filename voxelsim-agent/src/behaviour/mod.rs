@@ -1,5 +1,6 @@
 use voxelsim::{Agent, AgentState, VoxelGrid};
 
+#[allow(dead_code)]
 pub struct BehaviourState {
     current: Option<Box<dyn AgentBehaviour>>,
 }

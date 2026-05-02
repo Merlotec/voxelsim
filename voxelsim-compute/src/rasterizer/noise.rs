@@ -1,3 +1,5 @@
+#![allow(non_local_definitions)]
+
 use glsl_layout::Std140;
 use glsl_layout::{Uniform, float, uint, vec3};
 use nalgebra::Vector3;

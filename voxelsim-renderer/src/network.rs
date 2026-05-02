@@ -1,15 +1,12 @@
 use crossbeam_channel::{Receiver, Sender};
 use serde::de::DeserializeOwned;
-use std::marker::PhantomData;
-use std::sync::Arc;
 use tokio::io::AsyncReadExt;
-use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::net::{TcpListener, TcpStream};
-use voxelsim::{Agent, VoxelGrid};
 
 pub struct NetworkSubscriber<T> {
     sender: Sender<T>,
     port: u16,
+    #[allow(dead_code)]
     addr: String,
 }
 
@@ -40,7 +37,7 @@ impl<T: 'static + DeserializeOwned + Send + Sync> NetworkSubscriber<T> {
         let listener = TcpListener::bind(format!("127.0.0.1:{}", port)).await?;
 
         loop {
-            let (socket, addr) = listener.accept().await?;
+            let (socket, _) = listener.accept().await?;
             let sender = sender.clone();
             tokio::spawn(async move {
                 if let Err(e) = Self::handle_connection(socket, sender).await {
@@ -70,7 +67,7 @@ impl<T: 'static + DeserializeOwned + Send + Sync> NetworkSubscriber<T> {
             // 3) Deserialize with bincode
             match bincode::serde::decode_from_slice::<T, _>(&buf, bincode::config::standard()) {
                 Ok((data, _)) => {
-                    sender.send(data);
+                    let _ = sender.send(data);
                 }
                 Err(e) => {
                     eprintln!("Failed to deserialize VoxelGrid: {}", e);

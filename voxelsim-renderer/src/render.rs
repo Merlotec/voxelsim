@@ -1,11 +1,9 @@
 use bevy::platform::collections::HashMap;
-use bevy_panorbit_camera::{PanOrbitCamera, PanOrbitCameraPlugin};
-use crossbeam_channel::{Receiver, Sender};
-use nalgebra::Vector3;
+use bevy_panorbit_camera::PanOrbitCamera;
+use crossbeam_channel::Receiver;
 
 use voxelsim::{Agent, Cell, Coord, PovData, VoxelGrid};
 
-use bevy::app::AppExit;
 use bevy::prelude::*;
 
 use crate::pov::PovCamera;
@@ -146,14 +144,6 @@ pub fn setup(
         ..default()
     });
     let ground_mat = materials.add(Color::srgb(0.3, 0.3, 0.3));
-    pub enum GuiCommand {
-        RegenerateWorld,
-        MoveAgentA,
-        MoveAgentB,
-        MoveAgentC,
-        MoveAgentD,
-    }
-
     let solid_mat = materials.add(Color::srgb(0.4, 0.3, 0.3));
     let target_mat = materials.add(StandardMaterial {
         base_color: Color::srgba(1.0, 0.0, 0.0, 0.8),

@@ -1,204 +1,242 @@
-# VoxelSim (vxs)
+# VoxelSim
 
-VoxelSim is a modular voxel-based simulation and rendering stack. The workspace contains Rust crates for world representation, planning, rendering, and dynamics, plus Python bindings (via PyO3) that expose a unified `voxelsim` module for scripting and experiments.
+VoxelSim is a drone simulation and perception stack built around a sparse voxel world. Agents navigate a 3D grid, build an internal map from their GPU-rendered camera feed, plan smooth trajectories through the voxels, and predict future occupancy from motion history. The stack exposes everything through Python bindings (PyO3) for scripting and experimentation.
 
-## Repository Layout
+## Architecture
 
-- `voxelsim/`: Core library — voxel world (`VoxelGrid`), agents, planning, networking, and Python bindings behind `feature = "python"`.
-- `voxelsim-compute/`: Vision/compute pipeline used to synthesize agent POVs; includes `AgentVisionRenderer`, `FilterWorld`, and noise configuration. Python bindings behind `feature = "python"`.
-- `voxelsim-renderer/`: Bevy-based renderer that listens on TCP ports and visualizes worlds, agents, and POV feeds.
-- `voxelsim-simulator/`: Dynamics and terrain generation (quad dynamics, terrain generator). Optional `px4` submodule when built with `feature = "px4"`. Python bindings behind `feature = "python"`.
-- `voxelsim-daemon/`, `voxelsim-agent/`: Supporting services (not required for basic Python workflows).
-- `voxelsim-py/`: PyO3 shim crate that composes `voxelsim`, `voxelsim-compute`, and `voxelsim-simulator` into a single Python extension module named `voxelsim`.
-- `python/`: Example and experiment scripts. Note: some are written against older bindings; see “Outdated Scripts” below.
-- `px4-mc/`: PX4-related integration assets (only needed if using the PX4 dynamics feature).
+```
+voxelsim/            Core — VoxelGrid, agents, A* planner, path execution, PTG prediction
+voxelsim-compute/    GPU compute pipeline — rasterises the voxel world into the agent's FilterWorld
+voxelsim-simulator/  Quad dynamics, terrain generator, optional PX4 controller (default feature)
+voxelsim-renderer/   Bevy visualiser — world view + per-agent POV windows over TCP
+voxelsim-py/         PyO3 shim that composes the three crates into a single `voxelsim` Python module
+px4-mc/              Vendored PX4 attitude/position/rate controller C++ sources (no PX4 install needed)
+examples/            Python scripts demonstrating the full loop
+```
+
+## Notable Features
+
+### 1. GPU POV Rendering into FilterWorld
+
+`AgentVisionRenderer` uses a wgpu compute pipeline to rasterise the voxel world from the drone's exact camera pose at each frame. The output is written into a `FilterWorld` — the agent's internal representation of what it has mapped so far. Because the rasterisation runs on the GPU, a 100³-voxel scene renders in milliseconds, fast enough to keep up with the simulation loop. The `FilterWorld` accumulates evidence across frames so the agent progressively builds a complete internal map even as it moves.
+
+### 2. Smooth Path Planning Through the Voxel Grid
+
+`AStarActionPlanner` finds the shortest collision-free sequence of grid moves from origin to destination, padded by a configurable obstacle radius. Rather than executing this discrete path cell-by-cell, the path is lifted into a smooth trajectory: the centroid sequence is fit with a continuous spline so the drone follows a curved line through space. The drone is therefore not axis-locked — it can arc diagonally through open space while still respecting the topology of the grid search. The trajectory is stored per-agent and drawn live in the renderer as a blue spline.
+
+### 3. Phase Grid Occupancy Prediction (PTG)
+
+`PtgSolver` maintains a rolling history of `PhaseGrid` snapshots — each recording observed occupancy across the agent's visible region at a point in time. Given a future time horizon, it projects those observations forward using a bounded-addition accumulator: cells that have been consistently occupied gain high phase values; cells that fluctuate are penalised. The resulting `PhaseGrid` is a probability field over future occupied voxels. This is sent alongside the standard POV data so the renderer can visualise predicted occupancy as a separate translucent layer.
+
+---
 
 ## Quick Start
 
-1) Build the renderer and start it:
-- `cargo run -p voxelsim-renderer --release`
-- Listens on:
-  - World: `8080`
-  - Agents: `8081`
-  - POV streams (virtual world): from `8090`
-  - POV streams (agents-of-POV): from `9090`
+### 1. Build and install the Python module
 
-2) Install the Python bindings (`voxelsim`):
-- Recommended (maturin):
-  - `pip install maturin`
-  - `maturin develop -m voxelsim-py/Cargo.toml`
-- Alternative (no install):
-  - `cargo build -p voxelsim-py --release`
-  - Add the built extension dir to `PYTHONPATH`, e.g. `export PYTHONPATH=$PWD/voxelsim-py/target/release:$PYTHONPATH`
-
-3) Run an example:
-- `python python/povtest.py`
-
-## Python Bindings (`voxelsim`)
-
-The `voxelsim` module merges submodules from three Rust crates:
-- Core (`voxelsim`): world, agents, planning, networking
-- Compute (`voxelsim-compute`): POV rendering pipeline and filter world
-- Simulator (`voxelsim-simulator`): terrain and dynamics (+ optional `px4` module)
-
-Below is the current API surface most scripts should use. Methods with `_py` suffix are the Python-exposed wrappers.
-
-### World and Cells
-- `vxs.VoxelGrid.from_dict_py({(x,y,z): vxs.Cell.filled(), ...}) -> VoxelGrid`: Construct from a Python dict.
-- `vxs.VoxelGrid.to_dict_py() -> Dict[Tuple[int,int,int], vxs.Cell]`: Export sparse cells.
-- `vxs.VoxelGrid.as_numpy() -> (coords: np.ndarray[n,3], values: np.ndarray[n])`: Extract as arrays (1.0 filled, 0.5 sparse, 0.0 empty).
-- `vxs.VoxelGrid.collisions_py(pos: [f64;3], dims: [f64;3]) -> List[((i32,i32,i32), vxs.Cell)]`: AABB vs voxel intersections near `pos`.
-- `vxs.VoxelGrid.dense_snapshot_py(centre: [i32;3], half_dims: [i32;3]) -> DenseSnapshot`: Dense cuboid sample around a centre.
-- `vxs.Cell.filled()`, `vxs.Cell.sparse()`: Constructors.
-- `vxs.Cell.is_filled_py()`, `vxs.Cell.is_sparse_py()`, `vxs.Cell.bits_py()`.
-
-### Agents, Actions, Planning, and View
-- `vxs.Agent(id: int)`: Create an agent.
-- `agent.set_hold_py(coord: [i32;3], yaw: float)`: Place and hold at grid coord with yaw.
-- `agent.get_pos() -> [f64;3]`, `agent.get_coord_py() -> [i32;3]`.
-- `agent.camera_view_py(orientation: vxs.CameraOrientation) -> vxs.CameraView`.
-- `agent.perform_oneshot_py(intent: vxs.ActionIntent)`: Start a new action (overwrites any current one).
-- `agent.push_back_intent_py(intent: vxs.ActionIntent)`: Queue an intent behind the current action.
-- `agent.get_action_py() -> Optional[vxs.Action]`.
-
-- `vxs.ActionIntent(urgency: float, yaw: float, move_sequence: List[vxs.MoveDir], next: Optional[vxs.ActionIntent])`.
-- `intent.get_move_sequence() -> List[vxs.MoveDir]`, `intent.len() -> int`.
-- `vxs.MoveDir`: directions enum
-  - Named members: `vxs.MoveDir.Forward`, `Back`, `Left`, `Right`, `Up`, `Down`, `None`, `Undecided`
-  - Helpers: `vxs.MoveDir.from_code_py(code: int)`, and classmethods like `up()`, `down()`, etc.
-
-- Planning:
-  - `vxs.AStarActionPlanner(padding: int)`: Initialize with obstacle padding radius.
-- `planner.plan_action_py(world: VoxelGrid, origin: [i32;3], dst: [i32;3], urgency: float, yaw: float) -> vxs.ActionIntent`.
-
-- View and camera:
-  - `vxs.CameraProjection.new(aspect, fov_vertical, max_distance, near_distance)` or `vxs.CameraProjection.default_py()`.
-  - `vxs.CameraOrientation.vertical_tilt_py(angle_radians)` (and related constructors).
-
-### Compute Pipeline (POV Generation)
-- `vxs.FilterWorld()`: Shared, thread-safe virtual world for POV visualization and dense sampling.
-  - `fw.send_pov_py(client, stream_idx, agent_id, proj, orientation)`: Send current POV to the renderer.
-  - `fw.send_pov_async_py(async_client, ...)`: Async variant.
-  - `fw.is_updating_py(timestamp: float) -> bool`: True if an update for `timestamp` is in-progress.
-  - `fw.dense_snapshot_py(centre, half_dims) -> DenseSnapshot`, `fw.as_numpy() -> (coords, values)`.
-  - `fw.timestamp_py() -> Optional[float]`.
-- `vxs.NoiseParams.default_with_seed_py([x,y,z])` or `vxs.NoiseParams.none_py()`.
-- `vxs.AgentVisionRenderer(world: VoxelGrid, view_size: [u32;2], noise: NoiseParams)`.
-  - `renderer.update_filter_world_py(camera_view, proj, fw, timestamp, callback)`
-  - `renderer.update_filter_world_with_uncertainty_py(camera_view, proj, fw, unc_world, timestamp, callback)`
-  - `renderer.render_changeset_py(camera_view, proj, fw, timestamp, callback)`
-- `vxs.UncertaintyWorld.new_py(origin: [f64;3], node_size: f64)`, `vxs.UncertaintyWorld.default_py()`.
-
-### Networking (Renderer Client)
-- `vxs.RendererClient.default_localhost_py(pov_count: int) -> RendererClient`: Connects to world/agent sockets plus `pov_count` POV streams starting at default ports.
-- `client.send_world_py(world)`, `client.send_agents_py({id: agent, ...})`.
-- Async variant: `vxs.AsyncRendererClient.default_localhost_py(pov_count)`; call `send_world_py`, `send_agents_py` on it.
-
-### Simulator (Terrain & Dynamics)
-- Terrain:
-  - `vxs.TerrainGenerator()`, `vxs.TerrainConfig.default_py()`.
-  - `gen.generate_terrain_py(cfg)`, `gen.generate_world_py() -> VoxelGrid`.
-- Quad dynamics:
-  - `vxs.QuadParams.default_py()`
-  - `vxs.QuadDynamics(params)`
-  - `dyn.update_agent_dynamics_py(agent, env, chase_target, delta)`
-- Environment state:
-  - `vxs.EnvState.default_py()`
-- Chasing:
-  - `vxs.FixedLookaheadChaser.default_py()`
-  - `chaser.step_chase_py(agent, dt) -> vxs.ChaseTarget`
-
-Optional PX4 module (feature-gated):
-- Build with `maturin develop -m voxelsim-py/Cargo.toml --features px4` (or `cargo build -p voxelsim-py --release --features px4`).
-- Access as `vxs.px4.Px4Dynamics.default_py()` and `vxs.px4.Px4SettingsPy`.
-
-## Example (Minimal Loop)
-
-```python
-import voxelsim as vxs, time
-
-# World
-gen = vxs.TerrainGenerator()
-gen.generate_terrain_py(vxs.TerrainConfig.default_py())
-world = gen.generate_world_py()
-
-# Agent
-agent = vxs.Agent(0)
-agent.set_hold_py([50, 50, -20], 0.0)
-
-# POV setup
-fw = vxs.FilterWorld()
-proj = vxs.CameraProjection.default_py()
-cam = vxs.CameraOrientation.vertical_tilt_py(-0.5)
-noise = vxs.NoiseParams.default_with_seed_py([0.0, 0.0, 0.0])
-renderer = vxs.AgentVisionRenderer(world, [200, 150], noise)
-
-# Network client (1 POV stream)
-client = vxs.RendererClient.default_localhost_py(1)
-client.send_world_py(world)
-client.send_agents_py({0: agent})
-
-last_ts = time.time()
-while True:
-    now = time.time()
-    if not fw.is_updating_py(last_ts) and (now - last_ts) > 0.1:
-        fw.send_pov_py(client, 0, 0, proj, cam)
-        renderer.update_filter_world_py(agent.camera_view_py(cam), proj, fw, now, lambda *_: None)
-        last_ts = now
-    time.sleep(0.01)
+```bash
+pip install maturin pynput
+maturin develop -m voxelsim-py/Cargo.toml --release
 ```
 
-## Outdated Scripts (and how to update)
+This builds all Rust crates (including the vendored PX4 controller) and installs the `voxelsim` Python module into the active virtualenv. No PX4 installation is required.
 
-Some scripts in `python/` target older versions of the bindings. The current API is reflected in `python/povtest.py`. Known outdated patterns:
+### 2. Start the renderer
 
-- Renderer client connection:
-  - Old: `client = vxs.RendererClient.default_localhost_py()` + `client.connect_py(1)`
-  - New: `client = vxs.RendererClient.default_localhost_py(pov_count)` (no separate `connect_py`)
+The renderer is a separate native process. You need one instance for the world/agent view, plus one additional instance per agent POV stream, each passed a numeric port offset via `--virtual`.
 
-- POV renderer construction:
-  - Old: `renderer = vxs.AgentVisionRenderer(world, [w, h])`
-  - New: `renderer = vxs.AgentVisionRenderer(world, [w, h], vxs.NoiseParams...)`
+**Single agent** (one POV stream):
 
-- Agent action APIs:
-  - Old: `agent.perform_py(intent)`; `action.get_intent()`
-  - New: `agent.perform_oneshot_py(intent)`; `action.get_intent_queue()` (list)
+```bash
+# Terminal 1 — world + agent overview
+cargo run -p voxelsim-renderer --release
 
-- Dynamics types:
-  - Old: `voxelsim.PengQuadDynamics` (nonexistent)
-  - New: `vxs.QuadDynamics(vxs.QuadParams.default_py())` or `vxs.px4.Px4Dynamics.default_py()` when built with `--features px4`.
+# Terminal 2 — agent 0 POV
+cargo run -p voxelsim-renderer --release -- --virtual 0
+```
 
-- Client POV streaming:
-  - Use `FilterWorld.send_pov_py(client, stream_idx, agent_id, proj, orientation)` (not methods directly on the client).
+**Two agents** (e.g. `phasetest.py`):
 
-Files with legacy usage to update or use as reference only:
-- `python/povtest_legacy.py`
-- `python/sim_from_world.py`
-- `python/test.py`
+```bash
+# Terminal 1 — world + agent overview
+cargo run -p voxelsim-renderer --release
 
-For up-to-date references, prefer:
-- `python/povtest.py`
+# Terminal 2 — agent 0 POV
+cargo run -p voxelsim-renderer --release -- --virtual 0
 
-## Building the Workspace
+# Terminal 3 — agent 1 POV
+cargo run -p voxelsim-renderer --release -- --virtual 1
+```
 
-- Release build of all crates: `cargo build --release`
-- Individual crates: `cargo build -p voxelsim[...specific...] --release`
-- Python extension only: see “Install the Python bindings” above.
+The `--virtual N` offset selects the port pair for that stream: POV data arrives on `8090 + N` and agent data on `9090 + N`. The world renderer (no flag) listens for world updates on `8080` and agent positions on `8081`.
 
-## Ports and Protocol
+### 3. Run an example
 
-- All network messages are framed as: 4-byte little-endian length prefix + bincode payload.
-- Default ports:
-  - World: `8080`
-  - Agents: `8081`
-  - POV virtual world streams: start at `8090` (N streams)
-  - POV agent streams: start at `9090` (N streams)
+```bash
+python examples/povtest.py           # single agent, interactive WASD control
+python examples/astartest.py         # single agent, A* autonomous path to target
+python examples/phasetest.py         # two agents with PTG occupancy prediction
+python examples/povtest_simple.py    # minimal single agent, no dynamics
+```
 
-## Troubleshooting
+---
 
-- ImportError: `ModuleNotFoundError: No module named 'voxelsim'`
-  - Ensure the extension is installed with `maturin develop -m voxelsim-py/Cargo.toml`, or that `PYTHONPATH` includes the built `voxelsim` extension directory.
-- Missing `vxs.px4` submodule
-  - Reinstall/build with `--features px4` if you need PX4 dynamics.
-- Renderer not receiving POV
-  - Verify `pov_count` matches the number of POV streams you intend to use and the renderer is running.
+## Examples
+
+| Script | Renderer instances needed | Description |
+|---|---|---|
+| `povtest.py` | world + `--virtual 0` | Single agent, PX4 dynamics, manual WASD control |
+| `astartest.py` | world + `--virtual 0` | Single agent autonomously follows an A*-planned spline to a fixed target |
+| `phasetest.py` | world + `--virtual 0` + `--virtual 1` | Two agents, each with their own FilterWorld and PTG solver |
+| `povtest_simple.py` | world + `--virtual 0` | Single agent without physics, position updates directly from action intent |
+| `headless.py` | none | Legacy reference, runs without renderer |
+
+### Controls (interactive examples)
+
+| Key | Action |
+|---|---|
+| `W/S/A/D` | Forward / back / left / right |
+| `Space` | Up |
+| `Shift` | Down |
+| `Q / E` | Yaw left / right |
+| `Tab` | Toggle between orbit camera and agent POV in the virtual window |
+| `Z` | Centre orbit camera on next agent |
+| `ESC` | Quit |
+
+In `phasetest.py`, agent 1 uses arrow keys for movement and `'` / `/` for up/down.
+
+---
+
+## Network Protocol
+
+All messages are framed as a 4-byte little-endian length prefix followed by a bincode-serialised payload.
+
+| Port | Stream |
+|---|---|
+| `8080` | VoxelGrid world updates |
+| `8081` | Agent map (`HashMap<id, Agent>`) |
+| `8090 + N` | POV data for virtual stream N (`PovData` — virtual world + phase grid + camera projection) |
+| `9090 + N` | Agent positions for virtual stream N |
+
+---
+
+## Python API Reference
+
+### World
+
+```python
+vxs.VoxelGrid.from_dict_py({(x,y,z): vxs.Cell.filled(), ...}) -> VoxelGrid
+vxs.VoxelGrid.to_dict_py()           -> Dict[Tuple[int,int,int], Cell]
+vxs.VoxelGrid.as_numpy()             -> (coords: ndarray[N,3], values: ndarray[N])
+vxs.VoxelGrid.collisions_py(pos, dims) -> List[(coord, Cell)]
+vxs.Cell.filled() / vxs.Cell.sparse()
+```
+
+### Agents and actions
+
+```python
+agent = vxs.Agent(id)
+agent.set_hold_py(coord, yaw)
+agent.get_pos() / agent.get_coord_py()
+agent.camera_view_py(orientation) -> CameraView
+
+intent = vxs.ActionIntent(urgency, yaw_delta, move_dirs)
+agent.perform_oneshot_py(intent)   # replace current action
+agent.push_back_intent_py(intent)  # queue behind current action
+agent.get_action_py() -> Optional[Action]
+action.get_intent_queue()          # List[ActionIntent]
+
+vxs.MoveDir.Forward / Back / Left / Right / Up / Down
+```
+
+### Planning
+
+```python
+planner = vxs.AStarActionPlanner(padding)
+intent = planner.plan_action_py(world, origin, destination, urgency, yaw)
+```
+
+### Compute pipeline (FilterWorld and POV)
+
+```python
+fw  = vxs.FilterWorld()
+noise = vxs.NoiseParams.default_with_seed_py([sx, sy, sz])
+renderer = vxs.AgentVisionRenderer(world, [width, height], noise)
+
+# Render the current frame into fw (GPU, async callback on completion)
+renderer.update_filter_world_py(camera_view, proj, fw, dyn_world, timestamp, callback)
+
+# Render and return a WorldChangeset (for multi-agent use)
+renderer.render_changeset_py(camera_view, proj, fw, dyn_world, timestamp, callback)
+
+# Send POV to the renderer process
+fw.send_pov_py(client, stream_idx, agent_id, proj, orientation)
+fw.send_pov_async_py(client, stream_idx, agent_id, proj, orientation, phase_grid)
+fw.is_updating_py(last_timestamp) -> bool
+```
+
+### PTG occupancy prediction
+
+```python
+solver = vxs.PtgSolver.default_py()
+phase_grid = vxs.PhaseGrid()
+
+solver.add_phase_frame_py(agent, virtual_world, timestamp)
+phase_grid = solver.gen_phase_grid_py(agent, t_start, t_end)
+```
+
+### Dynamics and simulation
+
+```python
+# PX4 cascaded position/attitude/rate controller (default feature)
+dynamics = vxs.px4.Px4Dynamics.default_py()
+
+# Simple PID quad model
+dynamics = vxs.QuadDynamics(vxs.QuadParams.default_py())
+
+chaser  = vxs.FixedLookaheadChaser.default_py()
+env     = vxs.EnvState.default_py()
+
+chase_target = chaser.step_chase_py(agent, dt)
+dynamics.update_agent_dynamics_py(agent, env, chase_target, dt)
+```
+
+### Terrain generation
+
+```python
+gen = vxs.TerrainGenerator()
+cfg = vxs.TerrainConfig.default_py()
+cfg.set_world_dimensions_py(x, y, z)
+gen.generate_terrain_py(cfg)
+world = gen.generate_world_py()
+```
+
+### Network client
+
+```python
+# Blocking
+client = vxs.RendererClient.default_localhost_py(pov_count)
+
+# Non-blocking (sends in background threads)
+client = vxs.AsyncRendererClient.default_localhost_py(pov_count)
+
+client.send_world_py(world)
+client.send_agents_py({id: agent, ...})
+```
+
+---
+
+## Building from Source
+
+```bash
+# All Rust crates
+cargo build --release
+
+# Python extension only
+maturin develop -m voxelsim-py/Cargo.toml --release
+
+# Without PX4 dynamics (smaller binary)
+maturin develop -m voxelsim-py/Cargo.toml --release --no-default-features
+```
+
+The PX4 controller sources are vendored in `px4-mc/cpp/px4_mc/vendor/` — a full PX4-Autopilot checkout is not required. If you have one and want to build against it instead, set `PX4_SRC_DIR=/path/to/PX4-Autopilot` before building.

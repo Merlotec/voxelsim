@@ -1,7 +1,6 @@
 use nalgebra::Vector3;
 use pyo3::prelude::*;
 use voxelsim::chase::{ChaseTarget, FixedLookaheadChaser};
-use voxelsim::py::PyCoord;
 use voxelsim::{Agent, VoxelGrid};
 
 use crate::dynamics::quad::{QuadDynamics, QuadParams};

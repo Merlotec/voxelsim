@@ -148,7 +148,7 @@ impl AgentVisionRenderer {
                 fw_clone,
                 dynamic_world,
                 timestamp,
-                move |fw, ts| {
+                move |_fw, ts| {
                     Python::with_gil(|py| {
                         let _ = callback.call(py, (filter_world.clone_ref(py), ts), None);
                     });
@@ -177,7 +177,7 @@ impl AgentVisionRenderer {
                 dynamic_world,
                 uncertainty_world,
                 timestamp,
-                move |fw, ts| {
+                move |_fw, ts| {
                     Python::with_gil(|py| {
                         let _ = callback.call(py, (filter_world.clone_ref(py), ts), None);
                     });

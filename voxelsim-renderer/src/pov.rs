@@ -1,4 +1,4 @@
-use std::ops::{Deref, DerefMut};
+use std::ops::Deref;
 
 use bevy::platform::collections::HashMap;
 use bevy::render::RenderPlugin;
@@ -6,7 +6,7 @@ use bevy_panorbit_camera::{PanOrbitCamera, PanOrbitCameraPlugin};
 use crossbeam_channel::{Receiver, Sender};
 use nalgebra::Vector3;
 use voxelsim::trajectory::Trajectory;
-use voxelsim::viewport::{CameraOrientation, CameraProjection};
+use voxelsim::viewport::CameraOrientation;
 
 #[cfg(not(target_arch = "wasm32"))]
 use crate::network::NetworkSubscriber;
@@ -14,11 +14,11 @@ use crate::network::NetworkSubscriber;
 #[cfg(target_arch = "wasm32")]
 use crate::network_wasm::NetworkSubscriber;
 use crate::render::{
-    self, ActionCell, AgentComponent, AgentReceiver, CellAssets, CellComponent,
+    self, ActionCell, AgentComponent, AgentReceiver, CellAssets,
     DynamicCellComponent, FocusedAgent, OriginCell, PovNum, PovReceiver, QuitReceiver,
-    VirtualCellComponent, WorldReceiver,
+    VirtualCellComponent,
 };
-use voxelsim::{Action, Agent, MoveDir, PovData, VoxelGrid};
+use voxelsim::{Action, Agent, MoveDir, PovData};
 
 use bevy::app::AppExit;
 use bevy::prelude::*;
@@ -74,8 +74,8 @@ pub fn run_pov_server(port_offset: u16) {
         });
     });
 
-    let (gui_sender, gui_receiver) = crossbeam_channel::unbounded::<GuiCommand>();
-    let (quit_sender, quit_receiver) = crossbeam_channel::unbounded::<()>();
+    let (gui_sender, _gui_receiver) = crossbeam_channel::unbounded::<GuiCommand>();
+    let (_quit_sender, quit_receiver) = crossbeam_channel::unbounded::<()>();
 
     begin_render(
         port_offset,
@@ -98,7 +98,7 @@ pub fn begin_render(
     num: u16,
     pov_receiver: Receiver<PovData>,
     agent_receiver: Receiver<HashMap<usize, Agent>>,
-    gui_sender: Sender<GuiCommand>,
+    _gui_sender: Sender<GuiCommand>,
     quit_receiver: Receiver<()>,
 ) {
     App::new()
@@ -165,7 +165,7 @@ fn centre_camera_system(
         (With<Camera3d>, With<PovCamera>, Without<AgentComponent>),
     >,
     keyboard_input: Res<ButtonInput<KeyCode>>,
-    mut focused: ResMut<FocusedAgent>,
+    _focused: ResMut<FocusedAgent>,
     mut camera_mode: ResMut<CameraMode>,
     camera_orientation: Res<OrientationRes>,
     pov_info: Res<PovInfo>,
@@ -262,7 +262,7 @@ fn synchronise_world(
     action_origin_cell_query: Query<(Entity, &OriginCell)>,
     mut agent_query: Query<(Entity, &mut AgentComponent, &mut Transform)>,
     mut camera_projection_query: Query<
-        (&mut Projection),
+        &mut Projection,
         (With<Camera3d>, With<PovCamera>, Without<AgentComponent>),
     >,
     mut camera_orientation: ResMut<OrientationRes>,
