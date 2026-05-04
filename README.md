@@ -4,7 +4,7 @@ VoxelSim is an ultra high performance simulation and perception environment buil
 - Rapidly training autonomous drones (e.g. using reinforcement learning).
 - Benchmarking general (3D) physical intelligence models efficiently.
 
-Because VoxelSim can do updating of the drone's PoV so quickly, allows users to quickly train/test ML models for physical intelligence. 
+Because VoxelSim can do updating of the drone's PoV so quickly, it allows users to quickly train/test ML models for physical intelligence. 
 
 VoxelSim uses a highly optimised *voxel based renderer* to dramatically improve rendering performance of the drone's internal representation of the world. Any reasoning/control logic built on VoxelSim can easily be converted to run on a real drone, since VoxelSim uses the exact PID loops from PX4.
 
