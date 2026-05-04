@@ -8,6 +8,8 @@ Because VoxelSim can do updating of the drone's PoV so quickly, it allows users 
 
 VoxelSim uses a highly optimised *voxel based renderer* to dramatically improve rendering performance of the drone's internal representation of the world. Any reasoning/control logic built on VoxelSim can easily be converted to run on a real drone, since VoxelSim uses the exact PID loops from PX4.
 
+VoxelSim uses `wgpu`, so it can run on pretty much anything - no CUDA required!
+
 <!-- Agents navigate a 3D grid, build an internal map from their GPU-rendered camera feed, plan smooth trajectories through the voxels, and predict future occupancy from motion history. The stack exposes everything through Python bindings (PyO3) for scripting and experimentation. -->
 
 ## Demo
