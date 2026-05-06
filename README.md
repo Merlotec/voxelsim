@@ -1,6 +1,6 @@
 # VoxelSim
 
-VoxelSim is an ultra high performance simulation and perception environment built around a sparse voxel world. It is designed to enable rapid training of physical intelligence models and drone autonomy. This is great for two things:
+VoxelSim is an ultra high performance 3D embodied intelligence simulation environment built around a sparse voxel world. It is designed to enable rapid training of physical embodied intelligence models and drone autonomy. This is great for two things:
 - Rapidly training autonomous drones (e.g. using reinforcement learning).
 - Benchmarking general (3D) physical intelligence models efficiently.
 
