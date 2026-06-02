@@ -26,7 +26,8 @@ voxelsim-simulator/  Quad dynamics, terrain generator, optional PX4 controller (
 voxelsim-renderer/   Bevy visualiser — world view + per-agent POV windows over TCP
 voxelsim-py/         PyO3 shim that composes the three crates into a single `voxelsim` Python module
 px4-mc/              Vendored PX4 attitude/position/rate controller C++ sources (no PX4 install needed)
-examples/            Python scripts demonstrating the full loop
+python/embedding/    Voxel embedding training framework — encoder/decoder zoo, loss library, dataset
+python/examples/     Python scripts demonstrating the full loop
 ```
 
 ## Notable Features
@@ -42,6 +43,10 @@ examples/            Python scripts demonstrating the full loop
 ### 3. Phase Trajectory Graph (PTG) - Future Cell Occupancy Prediction
 
 `PtgSolver` maintains a rolling history of `PhaseGrid` snapshots — each recording observed occupancy across the agent's visible region at a point in time. Given a future time horizon, it projects those observations forward using a bounded-addition accumulator: cells that have been consistently occupied gain high phase values; cells that fluctuate are penalised. The resulting `PhaseGrid` is a probability field over future occupied voxels. This is sent alongside the standard POV data so the renderer can visualise predicted occupancy as a separate translucent layer.
+
+### 4. Voxel Embedding Training Zoo
+
+`python/embedding/` trains encoder-decoder models that compress a sparse voxel occupancy map into a fixed-size latent vector. Encoders range from a dense 3D CNN to a sparse convolution network (spconv), PointNet++, and a cross-attention model with 3D sinusoidal PE. Training worlds are streamed from the terrain generator using a fast Rust-side `as_numpy()` conversion. Auxiliary losses (soft IoU, distance-transform boundary, Chamfer, centre-of-mass) and TensorBoard logging are built in.
 
 ---
 
@@ -88,10 +93,10 @@ The `--virtual N` offset selects the port pair for that stream: POV data arrives
 ### 3. Run an example
 
 ```bash
-python examples/povtest.py           # single agent, interactive WASD control
-python examples/astartest.py         # single agent, A* autonomous path to target
-python examples/phasetest.py         # two agents with PTG occupancy prediction
-python examples/povtest_simple.py    # minimal single agent, no dynamics
+python python/examples/povtest.py           # single agent, interactive WASD control
+python python/examples/astartest.py         # single agent, A* autonomous path to target
+python python/examples/phasetest.py         # two agents with PTG occupancy prediction
+python python/examples/povtest_simple.py    # minimal single agent, no dynamics
 ```
 
 ---

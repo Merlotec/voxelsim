@@ -120,6 +120,22 @@ TerrainConfig {
 }
 ```
 
+### Terrain generation pipeline
+
+The generator runs in three stages, all driven by a single `u32` seed:
+
+1. **Ground** — two Perlin octaves build a height map. A `flat_band` parameter clamps the midrange to a plateau, producing realistic mixed terrain (rolling hills with flat valleys). A second pass fills gaps between adjacent columns so the surface stays solid.
+
+2. **Trees** — a separate Perlin pass identifies grove regions. Trees are placed with a minimum squared-distance separation; four species are supported, each with distinct voxel geometry:
+   - **Oak** — spherical canopy, thick branching arms, sub-branches
+   - **Pine** — conical layered shape, horizontal branch whorls, needle clusters
+   - **Birch** — tall narrow canopy, delicate upward-curving branches
+   - **Willow** — wide drooping branches with hanging leaf curtains
+
+3. **Passages** (optional) — a closure is evaluated at every coordinate; voxels where it returns `true` are carved away. Useful for caves or corridors. Disabled by default.
+
+Output is in NED coordinates; `generate_world` performs the axis swap from the internal build space to `(x, z, -y)`.
+
 ### VoxelGrid
 The 3D voxel world:
 - `VoxelGrid::new()` - Create empty world
